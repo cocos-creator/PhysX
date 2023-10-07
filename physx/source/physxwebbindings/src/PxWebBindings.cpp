@@ -1,6 +1,4 @@
 #include "PxPhysicsAPI.h"
-#include <PsSocket.h>
-#include <arpa/inet.h>
 #include <chrono>
 #include <ctime>
 #include <emscripten.h>
@@ -9,10 +7,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/select.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include "PxWebBindings.h"
 
 using namespace physx;
 using namespace emscripten;
@@ -383,7 +379,6 @@ EMSCRIPTEN_BINDINGS(physx) {
   function("PxInitExtensions", &PxInitExtensions, allow_raw_pointers());
   function("PxDefaultCpuDispatcherCreate", &PxDefaultCpuDispatcherCreate,
            allow_raw_pointers());
-  function("PxCreatePvd", &PxCreatePvd, allow_raw_pointers());
   function("PxCreateBasePhysics", &PxCreateBasePhysics, allow_raw_pointers());
   function("PxCreatePhysics", &PxCreatePhysics, allow_raw_pointers());
   function("PxRegisterArticulations", &PxRegisterArticulations,
@@ -616,12 +611,6 @@ EMSCRIPTEN_BINDINGS(physx) {
 
   enum_<PxIDENTITY>("PxIDENTITY").value("PxIdentity", PxIDENTITY::PxIdentity);
 
-  enum_<PxPvdInstrumentationFlag::Enum>("PxPvdInstrumentationFlag")
-      .value("eALL", PxPvdInstrumentationFlag::Enum::eALL)
-      .value("eDEBUG", PxPvdInstrumentationFlag::Enum::eDEBUG)
-      .value("ePROFILE", PxPvdInstrumentationFlag::Enum::ePROFILE)
-      .value("eMEMORY", PxPvdInstrumentationFlag::Enum::eMEMORY);
-
   enum_<PxVisualizationParameter::Enum>("PxVisualizationParameter")
       .value("eSCALE", PxVisualizationParameter::Enum::eSCALE)
       .value("eWORLD_AXES", PxVisualizationParameter::Enum::eWORLD_AXES)
@@ -757,8 +746,10 @@ EMSCRIPTEN_BINDINGS(physx) {
       .function("getGravity", &PxScene::getGravity)
       .function("addActor", &PxScene::addActor, allow_raw_pointers())
       .function("removeActor", &PxScene::removeActor, allow_raw_pointers())
+   #ifdef PX_WEB_BINDINGS_PVD
       .function("getScenePvdClient", &PxScene::getScenePvdClient,
                 allow_raw_pointers())
+   #endif
       .function("getActors", &PxScene::getActors, allow_raw_pointers())
       .function("setVisualizationCullingBox",
                 &PxScene::setVisualizationCullingBox)
@@ -1020,8 +1011,6 @@ EMSCRIPTEN_BINDINGS(physx) {
                 allow_raw_pointers())
       .function("createRigidStatic", &PxPhysics::createRigidStatic,
                 allow_raw_pointers());
-
-  class_<PxPvd>("PxPvd");
 
   class_<PxShapeFlags>("PxShapeFlags")
       .constructor<int>()
@@ -1598,6 +1587,8 @@ EMSCRIPTEN_BINDINGS(physx) {
           allow_raw_pointers());
   class_<PxControllerObstacleHit, base<PxControllerHit>>(
       "PxControllerObstacleHit");
+
+  pvdBindings();
 }
 
 namespace emscripten {
@@ -1607,11 +1598,6 @@ namespace internal {
 // destructors to keep them private in the bindings See:
 // https://github.com/emscripten-core/emscripten/issues/5587
 template <> void raw_destructor<PxFoundation>(PxFoundation *) { /* do nothing */
-}
-template <> void raw_destructor<PxPvd>(PxPvd *) { /* do nothing */
-}
-template <>
-void raw_destructor<PxPvdTransport>(PxPvdTransport *) { /* do nothing */
 }
 template <> void raw_destructor<PxMaterial>(PxMaterial *) { /* do nothing */
 }
@@ -1639,9 +1625,6 @@ template <> void raw_destructor<PxJoint>(PxJoint *) { /* do nothing */
 template <>
 void raw_destructor<PxJointLimitParameters>(
     PxJointLimitParameters *) { /* do nothing */
-}
-template <>
-void raw_destructor<PxPvdSceneClient>(PxPvdSceneClient *) { /* do nothing */
 }
 template <> void raw_destructor<PxCooking>(PxCooking *) { /* do nothing */
 }
