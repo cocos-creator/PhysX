@@ -1,7 +1,19 @@
 /// <reference path="./phy.d.ts" />
 
+declare module 'external:emscripten/physx/physx.release.asm.js' {
+  export default PhysX;
+}
+
+declare module 'external:emscripten/physx/physx.release.wasm.js' {
+  export default PhysX;
+}
+
+declare module 'external:emscripten/physx/physx.debug.wasm.js' {
+    export default PhysX;
+}
+
 // tslint:disable
-declare function PhysX (): Promise<void>;
+declare function PhysX (moduleOptions?: any): Promise<void>;
 
 declare namespace PhysX {
   type Constructor<T = {}> = new (...args: any[]) => T;
@@ -92,8 +104,4 @@ declare namespace PhysX {
   function createPhysics (a?: number, b?: Foundation, c?: TolerancesScale, trackOutstandingAllocations?: boolean, e?: Pvd): Physics;
 
   type Type = {}
-}
-
-declare module '@cocos/physx' {
-  export = PhysX;
 }

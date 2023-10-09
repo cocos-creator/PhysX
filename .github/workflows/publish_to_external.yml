@@ -66,7 +66,7 @@ jobs:
             Write-Host "Start release build"
             ./build-emscripten.ps1 -Mode Release
             Write-Host "Start debug build"
-            ./build-emscripten.ps1 -Mode Debug
+            ./build-emscripten.ps1 -Mode Debug -Only wasm
             Write-Host "Build finished"
             Get-ChildItem "builds"
           } finally {
@@ -75,6 +75,8 @@ jobs:
           $targetOutPath = "external/emscripten/physx"
           New-Item -ItemType Directory -Force (Split-Path $targetOutPath -Parent) | Out-Host
           Copy-Item -Recurse -Force "physx/builds/*.*" $targetOutPath | Out-Host
+          Copy-Item "physx/phy.d.ts" "$targetOutPath/phy.d.ts" | Out-Host
+          Copy-Item "physx/PhysX.d.ts" "$targetOutPath/physx.d.ts" | Out-Host
       
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
