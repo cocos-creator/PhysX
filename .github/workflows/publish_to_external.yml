@@ -15,7 +15,7 @@ on:
 jobs:
   release:
     name: Release
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Check Engine Externals Repo
         uses: actions/checkout@v4
@@ -33,9 +33,8 @@ jobs:
       
       - name: Set PhysX Info
         id: set_physx_info
-        shell: pwsh
         run: |
-          "TARGET_PHYSX_REF=$(& git -C physx rev-parse HEAD)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "TARGET_PHYSX_REF=$(git -C physx rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Checkout EMSDK
         uses: actions/checkout@v4
@@ -44,11 +43,13 @@ jobs:
           path: emsdk
 
       - name: Setup EMSDK
-        shell: pwsh
         run: |
+          sudo apt-get install python3
+          sudo apt-get install git
           cd emsdk
           ./emsdk install 3.1.41
           ./emsdk activate 3.1.41
+          source ./emsdk_env.sh
           # Verify
           emcc -v
 
@@ -56,27 +57,25 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Build
-        shell: pwsh
         run: |
           # Setup EMSDK env
-          & "emsdk/emsdk_env.ps1"
-          try {
-            Push-Location
-            cd physx
-            Write-Host "Start release build"
-            ./build-emscripten.ps1 -Mode Release
-            Write-Host "Start debug build"
-            ./build-emscripten.ps1 -Mode Debug -Only wasm
-            Write-Host "Build finished"
-            Get-ChildItem "builds"
-          } finally {
-            Pop-location
-          }
-          $targetOutPath = "external/emscripten/physx"
-          New-Item -ItemType Directory -Force (Split-Path $targetOutPath -Parent) | Out-Host
-          Copy-Item -Recurse -Force "physx/builds/*.*" $targetOutPath | Out-Host
-          Copy-Item "physx/phy.d.ts" "$targetOutPath/phy.d.ts" | Out-Host
-          Copy-Item "physx/PhysX.d.ts" "$targetOutPath/physx.d.ts" | Out-Host
+          source emsdk/emsdk_env.sh
+          export EMSCRIPTEN="$EMSDK/upstream/emscripten"
+          pushd -n $(pwd)
+          cd physx
+          echo "Start release build"
+          ./build-emscripten.sh
+          echo "Start debug build"
+          ./build-emscripten.sh debug
+          echo "Build finished"
+          ls builds
+          popd
+          
+          targetOutPath="external/emscripten/physx"
+          mkdir -p "$(dirname "$targetOutPath")"
+          cp -r physx/builds/* "$targetOutPath"
+          cp physx/phy.d.ts "$targetOutPath/phy.d.ts"
+          cp physx/PhysX.d.ts "$targetOutPath/physx.d.ts"
       
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
